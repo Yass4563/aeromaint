@@ -1,0 +1,215 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  SUPERVISEUR
+  TECHNICIEN
+}
+
+enum EquipementStatut {
+  EN_SERVICE
+  HORS_SERVICE
+  EN_PANNE
+}
+
+enum MaintenanceType {
+  ENTRETIEN
+  ETALONNAGE
+  CONTROLES_REGLEMENTAIRES
+}
+
+enum Periodicite {
+  HEBDOMADAIRE
+  MENSUELLE
+  TRIMESTRIELLE
+  SEMESTRIELLE
+  ANNUELLE
+}
+
+enum TaskStatut {
+  OUVERTE
+  SOUMISE
+  VALIDEE
+  REJETEE
+  CLOTUREE
+}
+
+model User {
+  id           String               @id @default(uuid())
+  nom          String
+  prenom       String
+  email        String               @unique
+  passwordHash String
+  role         Role                 @default(TECHNICIEN)
+  serviceId    String?
+  service      Service?             @relation(fields: [serviceId], references: [id])
+  actif        Boolean              @default(true)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  tasks        Task[]               @relation("TechnicienTasks")
+  validations  Task[]               @relation("ValidateurTasks")
+  rejections   Task[]               @relation("RejeteurTasks")
+  plannings    Planning[]           @relation("PlanningTechnicien")
+  rapports     RapportMaintenance[]
+
+  @@index([serviceId])
+  @@index([role])
+}
+
+model Service {
+  id          String       @id @default(uuid())
+  nom         String       @unique
+  createdAt   DateTime     @default(now())
+  users       User[]
+  equipements Equipement[]
+}
+
+model Famille {
+  id          String       @id @default(uuid())
+  nom         String       @unique
+  createdAt   DateTime     @default(now())
+  equipements Equipement[]
+}
+
+model Zone {
+  id          String       @id @default(uuid())
+  nom         String       @unique
+  createdAt   DateTime     @default(now())
+  equipements Equipement[]
+}
+
+model Equipement {
+  id                String            @id @default(uuid())
+  nom               String
+  code              String?           @unique
+  marque            String?
+  numeroSerie       String?
+  familleId         String
+  famille           Famille           @relation(fields: [familleId], references: [id])
+  zoneId            String
+  zone              Zone              @relation(fields: [zoneId], references: [id])
+  serviceId         String
+  service           Service           @relation(fields: [serviceId], references: [id])
+  statut            EquipementStatut  @default(EN_SERVICE)
+  qrCode            String            @unique
+  qrAppose          Boolean           @default(false)
+  miseEnService     DateTime?
+  remplacementPrevu DateTime?
+  dateArret         DateTime?
+  prixAcquisition   Decimal?          @db.Decimal(10, 2)
+  modeIntegre       Boolean           @default(false)
+  remarques         String?           @db.Text
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  plannings         Planning[]
+  tasks             Task[]
+  photos            EquipementPhoto[]
+
+  @@index([familleId])
+  @@index([zoneId])
+  @@index([serviceId])
+  @@index([statut])
+}
+
+model EquipementPhoto {
+  id           String     @id @default(uuid())
+  equipementId String
+  equipement   Equipement @relation(fields: [equipementId], references: [id], onDelete: Cascade)
+  url          String
+  createdAt    DateTime   @default(now())
+
+  @@index([equipementId])
+}
+
+model Planning {
+  id            String          @id @default(uuid())
+  equipementId  String
+  equipement    Equipement      @relation(fields: [equipementId], references: [id], onDelete: Cascade)
+  type          MaintenanceType
+  periodicite   Periodicite
+  dateDebut     DateTime
+  eviterWeekend Boolean         @default(false)
+  nuit          Boolean         @default(false)
+  technicienId  String?
+  technicien    User?           @relation("PlanningTechnicien", fields: [technicienId], references: [id])
+  actif         Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  tasks         Task[]
+
+  @@index([equipementId])
+  @@index([technicienId])
+  @@index([type])
+  @@index([periodicite])
+  @@index([actif])
+}
+
+model Task {
+  id                    String              @id @default(uuid())
+  planningId            String
+  planning              Planning            @relation(fields: [planningId], references: [id], onDelete: Cascade)
+  equipementId          String
+  equipement            Equipement          @relation(fields: [equipementId], references: [id], onDelete: Cascade)
+  technicienId          String?
+  technicien            User?               @relation("TechnicienTasks", fields: [technicienId], references: [id])
+  datePrevue            DateTime
+  statut                TaskStatut          @default(OUVERTE)
+  soumisLe              DateTime?
+  valideLe              DateTime?
+  valideParId           String?
+  validePar             User?               @relation("ValidateurTasks", fields: [valideParId], references: [id])
+  rejeteLe              DateTime?
+  rejeteParId           String?
+  rejetePar             User?               @relation("RejeteurTasks", fields: [rejeteParId], references: [id])
+  commentaireValidation String?             @db.Text
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  rapport               RapportMaintenance?
+
+  @@index([planningId])
+  @@index([equipementId])
+  @@index([technicienId])
+  @@index([statut])
+  @@index([datePrevue])
+  @@index([valideParId])
+  @@index([rejeteParId])
+}
+
+model RapportMaintenance {
+  id               String         @id @default(uuid())
+  taskId           String         @unique
+  task             Task           @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  description      String         @db.Text
+  dateIntervention DateTime
+  soumisParId      String
+  soumisPar        User           @relation(fields: [soumisParId], references: [id])
+  pdfUrl           String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  photos           RapportPhoto[]
+
+  @@index([soumisParId])
+  @@index([dateIntervention])
+}
+
+model RapportPhoto {
+  id        String             @id @default(uuid())
+  rapportId String
+  rapport   RapportMaintenance @relation(fields: [rapportId], references: [id], onDelete: Cascade)
+  url       String
+  createdAt DateTime           @default(now())
+
+  @@index([rapportId])
+}
