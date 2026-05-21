@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
 import { MaintenanceForm } from "@/components/tasks/maintenance-form";
 import { TaskCard } from "@/components/tasks/task-card";
 
@@ -43,8 +42,11 @@ export function TaskFeed({
             Retrouvez vos interventions en retard, prevues aujourd&apos;hui et a venir.
           </p>
         </div>
-        <Link href="/tasks/scan">
-          <Button>Scanner un QR</Button>
+        <Link
+          href="/tasks/scan"
+          className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-4 text-sm font-medium text-white transition hover:bg-primary/90"
+        >
+          Scanner un QR
         </Link>
       </div>
 

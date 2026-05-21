@@ -1,10 +1,12 @@
 import { Role } from "@prisma/client";
 
 import { EquipmentModal } from "@/components/equipment/equipment-modal";
+import { EquipmentTabs } from "@/components/equipment/equipment-tabs";
 import { QRCodeDisplay } from "@/components/equipment/qr-code-display";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { auth } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 export default async function EquipmentDetailPage({
@@ -103,45 +105,37 @@ export default async function EquipmentDetailPage({
             <p className="font-semibold">{equipement.remarques || "-"}</p>
           </div>
         </div>
-        <QRCodeDisplay equipementId={equipement.id} />
+        {session?.user?.role && hasPermission(session.user.role, "qr:generate") ? (
+          <QRCodeDisplay equipementId={equipement.id} />
+        ) : (
+          <div className="card flex items-center justify-center text-center text-sm text-muted">
+            Le QR code est reserve aux profils autorises a le generer.
+          </div>
+        )}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-3">
-        <section className="card">
-          <h2 className="text-xl font-bold">Historique des maintenances</h2>
-          <div className="mt-4 space-y-3">
-            {equipement.tasks.map((task) => (
-              <div key={task.id} className="rounded-2xl bg-primary-soft/30 px-4 py-3">
-                <p className="font-semibold">{task.planning.type}</p>
-                <p className="text-sm text-muted">{formatDate(task.datePrevue)}</p>
-                <Badge value={task.statut} className="mt-2" />
-              </div>
-            ))}
-          </div>
-        </section>
-        <section className="card">
-          <h2 className="text-xl font-bold">Photos</h2>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            {equipement.photos.map((photo) => (
-              <img key={photo.id} src={photo.url} alt="Photo equipement" className="h-28 w-full rounded-2xl object-cover" />
-            ))}
-          </div>
-        </section>
-        <section className="card">
-          <h2 className="text-xl font-bold">Plannings actifs</h2>
-          <div className="mt-4 space-y-3">
-            {equipement.plannings.map((planning) => (
-              <div key={planning.id} className="rounded-2xl bg-primary-soft/30 px-4 py-3">
-                <p className="font-semibold">{planning.type}</p>
-                <p className="text-sm text-muted">{planning.periodicite}</p>
-                <p className="text-sm text-muted">
-                  {planning.technicien ? `${planning.technicien.prenom} ${planning.technicien.nom}` : "Non assigne"}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
-      </div>
+      <EquipmentTabs
+        tasks={equipement.tasks.map((task) => ({
+          id: task.id,
+          datePrevue: task.datePrevue,
+          statut: task.statut,
+          planningType: task.planning.type,
+          rapportId: task.rapport?.id || null,
+        }))}
+        photos={equipement.photos.map((photo) => ({
+          id: photo.id,
+          url: photo.url,
+        }))}
+        plannings={equipement.plannings.map((planning) => ({
+          id: planning.id,
+          type: planning.type,
+          periodicite: planning.periodicite,
+          technicienNom: planning.technicien
+            ? `${planning.technicien.prenom} ${planning.technicien.nom}`
+            : null,
+          nuit: planning.nuit,
+        }))}
+      />
     </div>
   );
 }

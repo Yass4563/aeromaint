@@ -1,9 +1,28 @@
+import Link from "next/link";
+
 import { Role } from "@prisma/client";
 
 import { EquipmentModal } from "@/components/equipment/equipment-modal";
 import { EquipmentTable } from "@/components/equipment/equipment-table";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+
+function toPositiveNumber(value: string | string[] | undefined, fallback: number) {
+  const target = typeof value === "string" ? Number(value) : Number.NaN;
+  return Number.isFinite(target) && target > 0 ? Math.floor(target) : fallback;
+}
+
+function buildQueryString(params: Record<string, string | undefined>) {
+  const search = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params)) {
+    if (value) {
+      search.set(key, value);
+    }
+  }
+
+  return search.toString();
+}
 
 export default async function EquipmentPage({
   searchParams,
@@ -18,61 +37,126 @@ export default async function EquipmentPage({
   const serviceId = typeof params.serviceId === "string" ? params.serviceId : undefined;
   const statut = typeof params.statut === "string" ? params.statut : undefined;
   const enService = params.enService === "true";
+  const page = toPositiveNumber(params.page, 1);
+  const limit = Math.min(toPositiveNumber(params.limit, 10), 50);
 
-  const [families, zones, services, items] = await Promise.all([
+  const where = {
+    ...(search
+      ? {
+          OR: [{ nom: { contains: search } }, { code: { contains: search } }],
+        }
+      : {}),
+    ...(familleId ? { familleId } : {}),
+    ...(zoneId ? { zoneId } : {}),
+    ...(serviceId ? { serviceId } : {}),
+    ...(enService ? { statut: "EN_SERVICE" as const } : {}),
+    ...(!enService && statut ? { statut: statut as never } : {}),
+  };
+
+  const [
+    families,
+    zones,
+    services,
+    items,
+    total,
+    statusCounts,
+    distinctServices,
+  ] = await Promise.all([
     prisma.famille.findMany({ orderBy: { nom: "asc" } }),
     prisma.zone.findMany({ orderBy: { nom: "asc" } }),
     prisma.service.findMany({ orderBy: { nom: "asc" } }),
     prisma.equipement.findMany({
-      where: {
-        ...(search
-          ? {
-              OR: [{ nom: { contains: search } }, { code: { contains: search } }],
-            }
-          : {}),
-        ...(familleId ? { familleId } : {}),
-        ...(zoneId ? { zoneId } : {}),
-        ...(serviceId ? { serviceId } : {}),
-        ...(enService ? { statut: "EN_SERVICE" as never } : {}),
-        ...(!enService && statut ? { statut: statut as never } : {}),
-      },
+      where,
       include: {
         famille: true,
         zone: true,
         service: true,
       },
       orderBy: { nom: "asc" },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    prisma.equipement.count({ where }),
+    prisma.equipement.groupBy({
+      by: ["statut"],
+      where,
+      _count: { _all: true },
+    }),
+    prisma.equipement.findMany({
+      where,
+      select: { serviceId: true },
+      distinct: ["serviceId"],
     }),
   ]);
+
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = total === 0 ? 0 : (currentPage - 1) * limit + 1;
+  const pageEnd = Math.min(currentPage * limit, total);
+  const countsByStatus = Object.fromEntries(
+    statusCounts.map((entry) => [entry.statut, entry._count._all]),
+  ) as Record<string, number>;
+  const baseParams = {
+    ...(search ? { search } : {}),
+    ...(familleId ? { familleId } : {}),
+    ...(zoneId ? { zoneId } : {}),
+    ...(serviceId ? { serviceId } : {}),
+    ...(statut ? { statut } : {}),
+    ...(enService ? { enService: "true" } : {}),
+    limit: String(limit),
+  };
+  const paginationPages = Array.from(
+    new Set(
+      [1, currentPage - 1, currentPage, currentPage + 1, totalPages].filter(
+        (value) => value >= 1 && value <= totalPages,
+      ),
+    ),
+  );
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black tracking-tight">Parc des equipements</h1>
-          <p className="mt-2 text-sm text-muted">Liste des equipements : {items.length}</p>
+          <p className="mt-2 text-sm text-muted">Liste des equipements : {total}</p>
         </div>
-        {session?.user.role === Role.ADMIN ? (
-          <EquipmentModal triggerLabel="+ Ajouter" familles={families} zones={zones} services={services} />
-        ) : null}
+        <div className="flex flex-wrap items-center gap-3">
+          {session?.user.role === Role.ADMIN ? (
+            <>
+              <Link
+                href={`/api/equipment/qr-sheet?${buildQueryString(baseParams)}`}
+                target="_blank"
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-border px-4 text-sm font-medium transition hover:bg-primary-soft"
+              >
+                Imprimer la feuille QR
+              </Link>
+              <EquipmentModal
+                triggerLabel="+ Ajouter"
+                familles={families}
+                zones={zones}
+                services={services}
+              />
+            </>
+          ) : null}
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
         <div className="card bg-gradient-to-br from-white to-primary-soft/40">
           <p className="text-sm text-muted">En service</p>
-          <p className="mt-3 text-3xl font-black">{items.filter((item) => item.statut === "EN_SERVICE").length}</p>
+          <p className="mt-3 text-3xl font-black">{countsByStatus.EN_SERVICE || 0}</p>
         </div>
         <div className="card bg-gradient-to-br from-white to-red-50">
           <p className="text-sm text-muted">En panne</p>
-          <p className="mt-3 text-3xl font-black">{items.filter((item) => item.statut === "EN_PANNE").length}</p>
+          <p className="mt-3 text-3xl font-black">{countsByStatus.EN_PANNE || 0}</p>
         </div>
         <div className="card bg-gradient-to-br from-white to-slate-100">
           <p className="text-sm text-muted">Hors service</p>
-          <p className="mt-3 text-3xl font-black">{items.filter((item) => item.statut === "HORS_SERVICE").length}</p>
+          <p className="mt-3 text-3xl font-black">{countsByStatus.HORS_SERVICE || 0}</p>
         </div>
         <div className="card bg-gradient-to-br from-white to-amber-50">
           <p className="text-sm text-muted">Services couverts</p>
-          <p className="mt-3 text-3xl font-black">{new Set(items.map((item) => item.service.nom)).size}</p>
+          <p className="mt-3 text-3xl font-black">{distinctServices.length}</p>
         </div>
       </div>
 
@@ -96,30 +180,104 @@ export default async function EquipmentPage({
           />
           <select name="serviceId" defaultValue={serviceId} className="rounded-xl border border-border px-4 py-3">
             <option value="">Tous les services</option>
-            {services.map((item) => <option key={item.id} value={item.id}>{item.nom}</option>)}
+            {services.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.nom}
+              </option>
+            ))}
           </select>
           <select name="familleId" defaultValue={familleId} className="rounded-xl border border-border px-4 py-3">
             <option value="">Toutes les familles</option>
-            {families.map((item) => <option key={item.id} value={item.id}>{item.nom}</option>)}
+            {families.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.nom}
+              </option>
+            ))}
           </select>
           <select name="zoneId" defaultValue={zoneId} className="rounded-xl border border-border px-4 py-3">
             <option value="">Toutes les zones</option>
-            {zones.map((item) => <option key={item.id} value={item.id}>{item.nom}</option>)}
+            {zones.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.nom}
+              </option>
+            ))}
           </select>
-          <select name="statut" defaultValue={statut} className="rounded-xl border border-border px-4 py-3" disabled={enService}>
+          <select
+            name="statut"
+            defaultValue={statut}
+            className="rounded-xl border border-border px-4 py-3"
+            disabled={enService}
+          >
             <option value="">Tous les statuts</option>
             <option value="EN_SERVICE">En service</option>
             <option value="HORS_SERVICE">Hors service</option>
             <option value="EN_PANNE">En panne</option>
           </select>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="text-sm text-muted">
+            Lignes par page
+            <select
+              name="limit"
+              defaultValue={String(limit)}
+              className="ml-3 rounded-xl border border-border px-3 py-2 text-sm"
+            >
+              {[10, 20, 30, 50].map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+          </label>
           <button className="rounded-xl bg-primary px-4 py-3 font-medium text-white">Chercher</button>
           <a href="/equipment" className="rounded-xl border border-border px-4 py-3 font-medium">
             Reinitialiser
           </a>
         </div>
       </form>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted">
+          Affichage de {pageStart} a {pageEnd} sur {total} equipements.
+        </p>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/equipment?${buildQueryString({ ...baseParams, page: String(Math.max(1, currentPage - 1)) })}`}
+            aria-disabled={currentPage <= 1}
+            className={
+              currentPage <= 1
+                ? "pointer-events-none inline-flex h-10 items-center justify-center rounded-xl border border-border px-3 text-sm font-semibold opacity-50"
+                : "inline-flex h-10 items-center justify-center rounded-xl border border-border px-3 text-sm font-semibold hover:bg-primary-soft"
+            }
+          >
+            Precedent
+          </Link>
+          {paginationPages.map((pageNumber) => (
+            <Link
+              key={pageNumber}
+              href={`/equipment?${buildQueryString({ ...baseParams, page: String(pageNumber) })}`}
+              className={
+                pageNumber === currentPage
+                  ? "inline-flex h-10 min-w-10 items-center justify-center rounded-xl bg-primary px-3 text-sm font-semibold text-white"
+                  : "inline-flex h-10 min-w-10 items-center justify-center rounded-xl border border-border px-3 text-sm font-semibold hover:bg-primary-soft"
+              }
+            >
+              {pageNumber}
+            </Link>
+          ))}
+          <Link
+            href={`/equipment?${buildQueryString({ ...baseParams, page: String(Math.min(totalPages, currentPage + 1)) })}`}
+            aria-disabled={currentPage >= totalPages}
+            className={
+              currentPage >= totalPages
+                ? "pointer-events-none inline-flex h-10 items-center justify-center rounded-xl border border-border px-3 text-sm font-semibold opacity-50"
+                : "inline-flex h-10 items-center justify-center rounded-xl border border-border px-3 text-sm font-semibold hover:bg-primary-soft"
+            }
+          >
+            Suivant
+          </Link>
+        </div>
+      </div>
 
       <EquipmentTable items={items} />
     </div>

@@ -2,6 +2,7 @@ import { Role } from "@prisma/client";
 import { redirect } from "next/navigation";
 
 import { UserModal } from "@/components/users/user-modal";
+import { UserRowActions } from "@/components/users/user-row-actions";
 import { Badge } from "@/components/ui/badge";
 import { Table } from "@/components/ui/table";
 import { auth } from "@/lib/auth";
@@ -39,6 +40,7 @@ export default async function UsersPage() {
           { key: "role", label: "Role" },
           { key: "service", label: "Service" },
           { key: "statut", label: "Statut" },
+          { key: "actions", label: "Actions" },
         ]}
       >
         {users.map((user) => (
@@ -52,6 +54,21 @@ export default async function UsersPage() {
             <td className="px-4 py-3 text-muted">{user.service?.nom || "-"}</td>
             <td className="px-4 py-3">
               <Badge label={user.actif ? "Actif" : "Inactif"} />
+            </td>
+            <td className="px-4 py-3">
+              <UserRowActions
+                user={{
+                  id: user.id,
+                  nom: user.nom,
+                  prenom: user.prenom,
+                  email: user.email,
+                  role: user.role,
+                  serviceId: user.serviceId,
+                  actif: user.actif,
+                }}
+                services={services}
+                isCurrentUser={user.id === session.user.id}
+              />
             </td>
           </tr>
         ))}

@@ -15,13 +15,6 @@ export default async function DashboardPage() {
   }
 
   if (session.user.role === Role.TECHNICIEN) {
-    const feed = await fetch(`${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/tasks?vue=today`, {
-      headers: {
-        Cookie: "",
-      },
-      cache: "no-store",
-    }).then(() => null).catch(() => null);
-
     const [enRetard, aujourdHui, aVenir] = await Promise.all([
       prisma.task.findMany({
         where: {
@@ -54,8 +47,6 @@ export default async function DashboardPage() {
         take: 5,
       }),
     ]);
-
-    void feed;
 
     return (
       <TaskFeed
