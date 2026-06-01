@@ -9,13 +9,19 @@ interface Option {
   nom: string;
 }
 
+interface EquipmentOption extends Option {
+  code: string | null;
+}
+
 export function KPIFilters({
   families,
   services,
+  equipements,
   initial,
 }: {
   families: Option[];
   services: Option[];
+  equipements: EquipmentOption[];
   initial: Record<string, string | undefined>;
 }) {
   return (
@@ -43,16 +49,14 @@ export function KPIFilters({
       </div>
       <div className="grid gap-4 md:grid-cols-5">
         <Input label="Au" name="dateFin" type="date" defaultValue={initial.dateFin} />
-        <Select label="Tous les services" name="serviceScope" defaultValue="">
-          <option value="">Tous les services</option>
-          {services.map((item) => <option key={item.id} value={item.id}>{item.nom}</option>)}
+        <Select label="Equipement" name="equipementId" defaultValue={initial.equipementId}>
+          <option value="">Tous les equipements</option>
+          {equipements.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.code ? `${item.code} - ${item.nom}` : item.nom}
+            </option>
+          ))}
         </Select>
-        <Input
-          label="Equipement"
-          name="equipementId"
-          defaultValue={initial.equipementId}
-          placeholder="ID equipement"
-        />
         <Select label="Periodicite" name="periodicite" defaultValue={initial.periodicite}>
           <option value="">Toutes</option>
           {Object.values(Periodicite).map((item) => <option key={item} value={item}>{item}</option>)}

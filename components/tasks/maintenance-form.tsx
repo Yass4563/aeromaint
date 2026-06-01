@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Save } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 
 import { useToast } from "@/components/providers/toast-provider";
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { getApiErrorMessage } from "@/lib/client-api";
 import { formatDate } from "@/lib/utils";
 
 interface TaskDetail {
@@ -55,9 +57,19 @@ export function MaintenanceForm({
       return;
     }
 
+    const controller = new AbortController();
     setLoading(true);
-    fetch(`/api/tasks/${taskId}`)
-      .then((response) => response.json())
+    setTask(null);
+    fetch(`/api/tasks/${taskId}`, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(
+            await getApiErrorMessage(response, "Impossible de charger cette tache."),
+          );
+        }
+
+        return response.json();
+      })
       .then((json: TaskDetail) => {
         setTask(json);
         setDescription(json.rapport?.description || "");
@@ -68,8 +80,21 @@ export function MaintenanceForm({
         );
         setPhotoUrls(json.rapport?.photos?.map((photo) => photo.url) || []);
       })
+      .catch((error) => {
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
+
+        showToast({
+          type: "error",
+          title: error instanceof Error ? error.message : "Impossible de charger cette tache.",
+        });
+        onClose();
+      })
       .finally(() => setLoading(false));
-  }, [open, taskId]);
+
+    return () => controller.abort();
+  }, [onClose, open, showToast, taskId]);
 
   async function handleUpload(files: FileList | null) {
     if (!files || files.length === 0) {
@@ -114,7 +139,15 @@ export function MaintenanceForm({
     setSaving(false);
 
     if (!response.ok) {
-      showToast({ type: "error", title: "Impossible de soumettre l intervention." });
+      const message = await getApiErrorMessage(
+        response,
+        "Impossible de soumettre l intervention.",
+      );
+      showToast({
+        type: "error",
+        title: "Impossible de soumettre l intervention.",
+        description: message,
+      });
       return;
     }
 
@@ -194,7 +227,15 @@ export function MaintenanceForm({
             {photoUrls.length > 0 ? (
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 {photoUrls.map((url) => (
-                  <img key={url} src={url} alt="Photo de rapport" className="h-28 w-full rounded-2xl object-cover" />
+                  <Image
+                    key={url}
+                    src={url}
+                    alt="Photo de rapport"
+                    width={240}
+                    height={112}
+                    unoptimized
+                    className="h-28 w-full rounded-2xl object-cover"
+                  />
                 ))}
               </div>
             ) : null}

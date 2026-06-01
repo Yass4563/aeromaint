@@ -74,7 +74,7 @@ export function PlanningTable({ items }: { items: PlanningRow[] }) {
           </td>
           <td className="px-4 py-3 text-muted">
             {item.technicien ? `${item.technicien.prenom} ${item.technicien.nom}` : "Non assigne"}
-            {item.nuit ? " · Nuit" : ""}
+            {item.nuit ? " - Nuit" : ""}
           </td>
         </tr>
       ))}

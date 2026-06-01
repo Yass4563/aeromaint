@@ -23,9 +23,13 @@ export default async function KPIPage({
       ? params.dateFin
       : endOfMonth(new Date()).toISOString().slice(0, 10);
 
-  const [families, services, result] = await Promise.all([
+  const [families, services, equipements, result] = await Promise.all([
     prisma.famille.findMany({ orderBy: { nom: "asc" } }),
     prisma.service.findMany({ orderBy: { nom: "asc" } }),
+    prisma.equipement.findMany({
+      select: { id: true, nom: true, code: true },
+      orderBy: { nom: "asc" },
+    }),
     calculateKPI({
       dateDebut: new Date(initialDateDebut),
       dateFin: new Date(initialDateFin),
@@ -65,6 +69,7 @@ export default async function KPIPage({
       <KPIFilters
         families={families}
         services={services}
+        equipements={equipements}
         initial={{
           dateDebut: initialDateDebut,
           dateFin: initialDateFin,

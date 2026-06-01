@@ -13,6 +13,41 @@ export function isAllowedImageType(contentType: string): boolean {
   return ALLOWED_TYPES.has(contentType);
 }
 
+function detectImageExtension(buffer: Buffer): "jpg" | "png" | "webp" | undefined {
+  if (
+    buffer.length >= 3 &&
+    buffer[0] === 0xff &&
+    buffer[1] === 0xd8 &&
+    buffer[2] === 0xff
+  ) {
+    return "jpg";
+  }
+
+  if (
+    buffer.length >= 8 &&
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47 &&
+    buffer[4] === 0x0d &&
+    buffer[5] === 0x0a &&
+    buffer[6] === 0x1a &&
+    buffer[7] === 0x0a
+  ) {
+    return "png";
+  }
+
+  if (
+    buffer.length >= 12 &&
+    buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
+    buffer.subarray(8, 12).toString("ascii") === "WEBP"
+  ) {
+    return "webp";
+  }
+
+  return undefined;
+}
+
 export async function saveUploadedImage(file: File): Promise<string> {
   if (!isAllowedImageType(file.type)) {
     throw new Error("TYPE_NOT_ALLOWED");
@@ -26,9 +61,11 @@ export async function saveUploadedImage(file: File): Promise<string> {
   const now = new Date();
   const year = String(now.getFullYear());
   const month = String(now.getMonth() + 1).padStart(2, "0");
-  const extension = ALLOWED_TYPES.get(file.type);
+  const arrayBuffer = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  const extension = detectImageExtension(buffer);
 
-  if (!extension) {
+  if (!extension || extension !== ALLOWED_TYPES.get(file.type)) {
     throw new Error("TYPE_NOT_ALLOWED");
   }
 
@@ -39,9 +76,8 @@ export async function saveUploadedImage(file: File): Promise<string> {
 
   const filename = `${randomUUID()}.${extension}`;
   const absolutePath = path.join(absoluteDirectory, filename);
-  const arrayBuffer = await file.arrayBuffer();
 
-  await writeFile(absolutePath, Buffer.from(arrayBuffer));
+  await writeFile(absolutePath, buffer);
 
   return `/${relativeDirectory.replace(/^public[\\/]/, "").replace(/\\/g, "/")}/${filename}`;
 }

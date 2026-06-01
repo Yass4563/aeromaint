@@ -29,13 +29,13 @@ export function SubmittedTasksBoard({ items }: { items: SubmittedTask[] }) {
     [items.length, selectedIds.length],
   );
 
-  async function runAction(taskId: string, type: "validate" | "reject") {
+  async function runAction(taskId: string, type: "validate" | "reject", commentaire?: string) {
     const response = await fetch(`/api/tasks/${taskId}/${type}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(
         type === "reject"
-          ? { commentaire: "Rapport a completer avant validation." }
+          ? { commentaire }
           : { commentaire: "Validation superviseur." },
       ),
     });
@@ -43,8 +43,18 @@ export function SubmittedTasksBoard({ items }: { items: SubmittedTask[] }) {
   }
 
   async function action(taskId: string, type: "validate" | "reject") {
+    const commentaire =
+      type === "reject"
+        ? window.prompt("Motif du rejet", "Rapport a completer avant validation.")
+        : undefined;
+
+    if (type === "reject" && !commentaire?.trim()) {
+      showToast({ type: "error", title: "Le motif du rejet est obligatoire." });
+      return;
+    }
+
     setPendingId(taskId);
-    const success = await runAction(taskId, type);
+    const success = await runAction(taskId, type, commentaire?.trim());
     setPendingId(null);
 
     if (!success) {

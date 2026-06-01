@@ -1,8 +1,10 @@
-import { apiError, apiOk, requireSession } from "@/lib/api";
+import { apiError, apiOk, requirePermission } from "@/lib/api";
 import { saveUploadedImage } from "@/lib/upload";
 
+const MAX_FILES = 8;
+
 export async function POST(request: Request) {
-  const sessionResult = await requireSession();
+  const sessionResult = await requirePermission("rapport:write");
 
   if ("response" in sessionResult) {
     return sessionResult.response;
@@ -13,6 +15,10 @@ export async function POST(request: Request) {
 
   if (files.length === 0) {
     return apiError("Aucun fichier n'a ete transmis.", "NO_FILE", 400);
+  }
+
+  if (files.length > MAX_FILES) {
+    return apiError("Vous pouvez televerser au maximum 8 fichiers.", "TOO_MANY_FILES", 400);
   }
 
   try {

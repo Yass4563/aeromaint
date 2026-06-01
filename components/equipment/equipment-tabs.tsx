@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -93,9 +94,12 @@ export function EquipmentTabs({ tasks, photos, plannings }: EquipmentTabsProps) 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {photos.map((photo) => (
               <div key={photo.id} className="overflow-hidden rounded-3xl border border-border bg-white p-2">
-                <img
+                <Image
                   src={photo.url}
                   alt="Photo equipement"
+                  width={320}
+                  height={176}
+                  unoptimized
                   className="h-44 w-full rounded-2xl object-cover"
                 />
               </div>

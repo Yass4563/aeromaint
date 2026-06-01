@@ -1,5 +1,5 @@
 import { Periodicite, TaskStatut } from "@prisma/client";
-import { addDays, addMonths } from "date-fns";
+import { addDays, addMonths, startOfDay } from "date-fns";
 
 import { prisma } from "@/lib/prisma";
 
@@ -66,34 +66,75 @@ export async function generateTasksForPlanning(planningId: string): Promise<void
     return;
   }
 
-  await prisma.task.deleteMany({
-    where: {
-      planningId,
-      statut: TaskStatut.OUVERTE,
-    },
-  });
-
   if (!planning.actif) {
+    await prisma.task.deleteMany({
+      where: {
+        planningId,
+        statut: TaskStatut.OUVERTE,
+        datePrevue: {
+          gte: startOfDay(new Date()),
+        },
+      },
+    });
     return;
   }
 
-  const dates = generateTaskDates(
-    planning.dateDebut,
-    planning.periodicite,
-    planning.eviterWeekend,
+  const today = startOfDay(new Date());
+  const dates = Array.from(
+    new Map(
+      generateTaskDates(
+        planning.dateDebut,
+        planning.periodicite,
+        planning.eviterWeekend,
+      )
+        .filter((date) => date >= today)
+        .map((date) => [date.getTime(), date]),
+    ).values(),
   );
 
   if (dates.length === 0) {
     return;
   }
 
-  await prisma.task.createMany({
-    data: dates.map((datePrevue) => ({
-      planningId: planning.id,
-      equipementId: planning.equipementId,
-      technicienId: planning.technicienId,
-      datePrevue,
-      statut: TaskStatut.OUVERTE,
-    })),
+  await prisma.$transaction(async (tx) => {
+    await tx.task.deleteMany({
+      where: {
+        planningId,
+        statut: TaskStatut.OUVERTE,
+        datePrevue: {
+          gte: today,
+        },
+      },
+    });
+
+    const existingTasks = await tx.task.findMany({
+      where: {
+        planningId,
+        datePrevue: {
+          in: dates,
+        },
+      },
+      select: {
+        datePrevue: true,
+      },
+    });
+    const existingDateKeys = new Set(
+      existingTasks.map((task) => task.datePrevue.getTime()),
+    );
+    const taskData = dates
+      .filter((datePrevue) => !existingDateKeys.has(datePrevue.getTime()))
+      .map((datePrevue) => ({
+        planningId: planning.id,
+        equipementId: planning.equipementId,
+        technicienId: planning.technicienId,
+        datePrevue,
+        statut: TaskStatut.OUVERTE,
+      }));
+
+    if (taskData.length > 0) {
+      await tx.task.createMany({
+        data: taskData,
+      });
+    }
   });
 }

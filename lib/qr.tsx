@@ -1,14 +1,19 @@
+/* eslint-disable jsx-a11y/alt-text */
 import { Buffer } from "buffer";
 
 import { Document, Page, StyleSheet, Text, View, Image, renderToBuffer } from "@react-pdf/renderer";
 import QRCode from "qrcode";
 
+import { buildEquipmentScanUrl } from "@/lib/qr-identification";
+
 export async function generateQRCodeBuffer(
   equipementQrCode: string,
   baseUrl: string,
 ): Promise<Buffer> {
-  const url = `${baseUrl}/tasks/scan?qr=${equipementQrCode}`;
-  return QRCode.toBuffer(url, { width: 256, margin: 2 });
+  return QRCode.toBuffer(buildEquipmentScanUrl(equipementQrCode, baseUrl), {
+    width: 256,
+    margin: 2,
+  });
 }
 
 const styles = StyleSheet.create({
@@ -68,10 +73,13 @@ export async function generateQRSheet(
       items: await Promise.all(
         items.map(async (item) => ({
           ...item,
-          qrImage: await QRCode.toDataURL(`${baseUrl}/tasks/scan?qr=${item.qrCode}`, {
-            width: 256,
-            margin: 2,
-          }),
+          qrImage: await QRCode.toDataURL(
+            buildEquipmentScanUrl(item.qrCode, baseUrl),
+            {
+              width: 256,
+              margin: 2,
+            },
+          ),
         })),
       ),
     })),

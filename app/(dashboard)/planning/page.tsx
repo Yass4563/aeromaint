@@ -222,7 +222,7 @@ export default async function PlanningPage({
       </form>
 
       <PlanningTable items={planning} />
-      <CalendarView />
+      <CalendarView items={planning} />
     </div>
   );
 }

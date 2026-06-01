@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
 import { MaintenanceForm } from "@/components/tasks/maintenance-form";
@@ -26,6 +26,7 @@ export function TaskFeed({
   initialOpenTaskId?: string;
 }) {
   const [activeTaskId, setActiveTaskId] = useState<string | null>(initialOpenTaskId || null);
+  const closeTask = useCallback(() => setActiveTaskId(null), []);
 
   useEffect(() => {
     if (initialOpenTaskId) {
@@ -86,7 +87,7 @@ export function TaskFeed({
         ))}
       </section>
 
-      <MaintenanceForm taskId={activeTaskId} open={Boolean(activeTaskId)} onClose={() => setActiveTaskId(null)} />
+      <MaintenanceForm taskId={activeTaskId} open={Boolean(activeTaskId)} onClose={closeTask} />
     </div>
   );
 }

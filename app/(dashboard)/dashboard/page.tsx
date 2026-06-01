@@ -15,12 +15,15 @@ export default async function DashboardPage() {
   }
 
   if (session.user.role === Role.TECHNICIEN) {
+    const todayStart = new Date(new Date().setHours(0, 0, 0, 0));
+    const todayEnd = new Date(new Date().setHours(23, 59, 59, 999));
+    const actionableStatuses = [TaskStatut.OUVERTE, TaskStatut.REJETEE, TaskStatut.SOUMISE];
     const [enRetard, aujourdHui, aVenir] = await Promise.all([
       prisma.task.findMany({
         where: {
           technicienId: session.user.id,
           statut: { in: [TaskStatut.OUVERTE, TaskStatut.REJETEE] },
-          datePrevue: { lt: new Date() },
+          datePrevue: { lt: todayStart },
         },
         include: { equipement: true, planning: true },
         orderBy: { datePrevue: "asc" },
@@ -28,9 +31,10 @@ export default async function DashboardPage() {
       prisma.task.findMany({
         where: {
           technicienId: session.user.id,
+          statut: { in: actionableStatuses },
           datePrevue: {
-            gte: startOfMonth(new Date()),
-            lte: endOfMonth(new Date()),
+            gte: todayStart,
+            lte: todayEnd,
           },
         },
         include: { equipement: true, planning: true },
@@ -40,7 +44,8 @@ export default async function DashboardPage() {
       prisma.task.findMany({
         where: {
           technicienId: session.user.id,
-          datePrevue: { gt: new Date() },
+          statut: { in: actionableStatuses },
+          datePrevue: { gt: todayEnd },
         },
         include: { equipement: true, planning: true },
         orderBy: { datePrevue: "asc" },

@@ -1,14 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function QRScanner() {
+import { normalizeQrCodeValue } from "@/lib/qr-identification";
+
+export function QRScanner({ initialError = "" }: { initialError?: string }) {
   const router = useRouter();
-  const elementId = useRef(`scanner-${crypto.randomUUID()}`);
-  const [error, setError] = useState("");
+  const elementId = `scanner-${useId().replace(/:/g, "")}`;
+  const scanLockedRef = useRef(false);
+  const [error, setError] = useState(initialError);
 
   useEffect(() => {
+    let mounted = true;
     let scanner:
       | {
           start: (
@@ -25,34 +29,43 @@ export function QRScanner() {
     async function startScanner() {
       const scannerModule = await import("html5-qrcode");
       const Html5Qrcode = scannerModule.Html5Qrcode;
-        const instance = new Html5Qrcode(elementId.current);
-        scanner = instance;
+      const instance = new Html5Qrcode(elementId);
+      scanner = instance;
 
-        await instance.start(
-          { facingMode: "environment" },
-          { fps: 10, qrbox: 220 },
-          (decodedText: string) => {
-            const match = decodedText.match(/[?&]qr=([a-zA-Z0-9-]+)/);
-            if (match?.[1]) {
-              router.push(`/tasks/scan?qr=${match[1]}`);
-            } else {
-              setError("QR code invalide.");
-            }
-          },
-          () => undefined,
-        );
+      await instance.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 220 },
+        (decodedText: string) => {
+          if (scanLockedRef.current) {
+            return;
+          }
+
+          const qrCode = normalizeQrCodeValue(decodedText);
+
+          if (qrCode) {
+            scanLockedRef.current = true;
+            router.push(`/tasks/scan?qr=${encodeURIComponent(qrCode)}`);
+          } else {
+            setError("QR code invalide.");
+          }
+        },
+        () => undefined,
+      );
     }
 
     startScanner().catch(() => {
-      setError("Impossible d'acceder a la camera.");
+      if (mounted) {
+        setError("Impossible d'acceder a la camera.");
+      }
     });
 
     return () => {
+      mounted = false;
       if (scanner) {
         scanner.stop().catch(() => undefined).finally(() => scanner?.clear());
       }
     };
-  }, [router]);
+  }, [elementId, router]);
 
   return (
     <div className="card">
@@ -60,7 +73,7 @@ export function QRScanner() {
       <p className="mt-2 text-sm text-muted">
         Positionnez le QR code de l equipement dans le cadre.
       </p>
-      <div id={elementId.current} className="mt-6 overflow-hidden rounded-3xl" />
+      <div id={elementId} className="mt-6 overflow-hidden rounded-3xl" />
       {error ? <p className="mt-4 text-sm text-danger">{error}</p> : null}
     </div>
   );

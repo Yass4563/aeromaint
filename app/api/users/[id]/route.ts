@@ -69,6 +69,16 @@ export async function PUT(
     return apiError("Utilisateur introuvable.", "USER_NOT_FOUND", 404);
   }
 
+  if (bodyResult.data.email) {
+    const emailOwner = await prisma.user.findUnique({
+      where: { email: bodyResult.data.email.toLowerCase() },
+    });
+
+    if (emailOwner && emailOwner.id !== id) {
+      return apiError("Cette adresse email est deja utilisee.", "USER_EXISTS", 400);
+    }
+  }
+
   const passwordHash = bodyResult.data.password
     ? await bcrypt.hash(bodyResult.data.password, 12)
     : undefined;
@@ -113,6 +123,10 @@ export async function DELETE(
 
   if (!existing) {
     return apiError("Utilisateur introuvable.", "USER_NOT_FOUND", 404);
+  }
+
+  if (existing.id === sessionResult.session.user.id) {
+    return apiError("Vous ne pouvez pas desactiver votre propre compte.", "SELF_DISABLE_FORBIDDEN", 400);
   }
 
   const user = await prisma.user.update({

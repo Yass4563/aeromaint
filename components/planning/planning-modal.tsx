@@ -46,8 +46,6 @@ export function PlanningModal({
     eviterWeekend: true,
     nuit: false,
     technicienId: "",
-    memeJourSemaine: true,
-    uneSeuleJournee: false,
   });
 
   async function submit() {
@@ -58,8 +56,6 @@ export function PlanningModal({
       body: JSON.stringify({
         ...form,
         technicienId: form.technicienId || undefined,
-        memeJourSemaine: undefined,
-        uneSeuleJournee: undefined,
       }),
     });
     setLoading(false);
@@ -88,15 +84,7 @@ export function PlanningModal({
         onClose={() => setOpen(false)}
         title={`Ajouter un planning pour : ${equipements.find((item) => item.id === form.equipementId)?.nom || ""}`}
         footer={
-          <div className="flex items-center justify-between gap-3">
-            <label className="flex items-center gap-3 text-sm text-muted">
-              <input
-                type="checkbox"
-                checked={form.uneSeuleJournee}
-                onChange={(e) => setForm({ ...form, uneSeuleJournee: e.target.checked })}
-              />
-              Une seule journee seulement
-            </label>
+          <div className="flex justify-end">
             <Button onClick={submit} disabled={loading}>
               {loading ? "Enregistrement..." : "Enregistrer"}
             </Button>
@@ -176,7 +164,8 @@ export function PlanningModal({
               {periodiciteOptions.map((item) => (
                 <label key={item.value} className="flex items-start gap-3 rounded-xl bg-white px-3 py-3 text-sm shadow-sm">
                   <input
-                    type="checkbox"
+                    type="radio"
+                    name="periodicite"
                     checked={form.periodicite === item.value}
                     onChange={() => selectPeriodicite(item.value)}
                     className="mt-1"
@@ -196,14 +185,6 @@ export function PlanningModal({
               onChange={(e) => setForm({ ...form, eviterWeekend: e.target.checked })}
             />
             Eviter Samedi et Dimanche
-          </label>
-          <label className="flex items-center gap-3 text-sm">
-            <input
-              type="checkbox"
-              checked={form.memeJourSemaine}
-              onChange={(e) => setForm({ ...form, memeJourSemaine: e.target.checked })}
-            />
-            Planifier pour le meme jour de la semaine
           </label>
           <label className="flex items-center gap-3 text-sm md:col-span-2">
             <input

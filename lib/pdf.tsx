@@ -1,3 +1,4 @@
+/* eslint-disable jsx-a11y/alt-text */
 import { existsSync } from "fs";
 import path from "path";
 
@@ -75,12 +76,18 @@ const styles = StyleSheet.create({
 });
 
 function resolvePhotoSource(url: string): string | undefined {
-  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) {
-    return url;
+  if (!url.startsWith("/uploads/")) {
+    return undefined;
   }
 
-  const relativePath = url.startsWith("/") ? url.slice(1) : url;
-  const absolutePath = path.join(process.cwd(), "public", relativePath.replace(/^uploads\//, "uploads/"));
+  const uploadRoot = path.join(process.cwd(), "public", "uploads");
+  const relativePath = url.slice("/uploads/".length);
+  const absolutePath = path.normalize(path.join(uploadRoot, relativePath));
+  const relativeToRoot = path.relative(uploadRoot, absolutePath);
+
+  if (relativeToRoot.startsWith("..") || path.isAbsolute(relativeToRoot)) {
+    return undefined;
+  }
 
   return existsSync(absolutePath) ? absolutePath : undefined;
 }
@@ -182,7 +189,7 @@ export async function generateRapportPDF(rapportId: string): Promise<Buffer> {
         <Text
           style={styles.footer}
           render={({ pageNumber, totalPages }) =>
-            `ESU · Maintenance preventive · Page ${pageNumber}/${totalPages}`
+            `ESU - Maintenance preventive - Page ${pageNumber}/${totalPages}`
           }
           fixed
         />
