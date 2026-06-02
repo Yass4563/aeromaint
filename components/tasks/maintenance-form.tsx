@@ -240,7 +240,7 @@ export function MaintenanceForm({
           )}
           <div className="space-y-3">
             <label className="inline-flex items-center gap-3 rounded-xl border border-dashed border-border px-4 py-3">
-              <input type="file" accept="image/*" multiple className="hidden" onChange={(event) => handleUpload(event.target.files)} />
+              <input type="file" accept="image/jpeg,image/png" multiple className="hidden" onChange={(event) => handleUpload(event.target.files)} />
               Ajouter des photos
             </label>
             {photoUrls.length > 0 ? (

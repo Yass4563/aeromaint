@@ -244,6 +244,12 @@ export default async function EquipmentPage({
           Affichage de {pageStart} a {pageEnd} sur {total} equipements.
         </p>
         <div className="flex items-center gap-2">
+          <a
+            href={`/api/equipment/export?${buildQueryString(baseParams)}`}
+            className="inline-flex h-10 items-center justify-center rounded-xl border border-border px-3 text-sm font-semibold hover:bg-primary-soft"
+          >
+            Exporter Excel
+          </a>
           <Link
             href={`/equipment?${buildQueryString({ ...baseParams, page: String(Math.max(1, currentPage - 1)) })}`}
             aria-disabled={currentPage <= 1}

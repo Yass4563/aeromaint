@@ -74,6 +74,11 @@ export default async function TasksPage({
       },
       planning: true,
       technicien: true,
+      rapport: {
+        include: {
+          photos: true,
+        },
+      },
     },
     orderBy: { soumisLe: "asc" },
   });

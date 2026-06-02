@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
@@ -15,6 +16,11 @@ interface SubmittedTask {
   equipement: { nom: string; famille: { nom: string }; zone: { nom: string } };
   planning: { type: string };
   technicien: { nom: string; prenom: string } | null;
+  rapport: {
+    id: string;
+    description: string;
+    photos: Array<{ id: string; url: string }>;
+  } | null;
 }
 
 export function SubmittedTasksBoard({ items }: { items: SubmittedTask[] }) {
@@ -138,6 +144,7 @@ export function SubmittedTasksBoard({ items }: { items: SubmittedTask[] }) {
           { key: "date", label: "Date prevue" },
           { key: "zone", label: "Zone" },
           { key: "technicien", label: "Technicien" },
+          { key: "rapport", label: "Rapport" },
           { key: "statut", label: "Statut" },
           { key: "actions", label: "Actions" },
         ]}
@@ -162,6 +169,41 @@ export function SubmittedTasksBoard({ items }: { items: SubmittedTask[] }) {
             <td className="px-4 py-3 text-muted">{item.equipement.zone.nom}</td>
             <td className="px-4 py-3 text-muted">
               {item.technicien ? `${item.technicien.prenom} ${item.technicien.nom}` : "Non assigne"}
+            </td>
+            <td className="min-w-64 px-4 py-3">
+              {item.rapport ? (
+                <div className="space-y-2">
+                  <p className="max-w-72 text-sm text-muted">{item.rapport.description}</p>
+                  {item.rapport.photos.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {item.rapport.photos.map((photo) => (
+                        <a key={photo.id} href={photo.url} target="_blank" rel="noreferrer">
+                          <Image
+                            src={photo.url}
+                            alt="Photo du rapport"
+                            width={64}
+                            height={48}
+                            unoptimized
+                            className="h-12 w-16 rounded-lg object-cover"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted">Aucune photo jointe.</p>
+                  )}
+                  <a
+                    href={`/api/reports/${item.rapport.id}/pdf`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex text-sm font-semibold text-primary hover:underline"
+                  >
+                    Exporter le PDF
+                  </a>
+                </div>
+              ) : (
+                <p className="text-sm text-muted">Rapport indisponible.</p>
+              )}
             </td>
             <td className="px-4 py-3">
               <Badge value="SOUMISE" />

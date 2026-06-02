@@ -41,7 +41,7 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof Error && error.message === "TYPE_NOT_ALLOWED") {
       return apiError(
-        "Seuls les fichiers JPG, PNG et WEBP sont autorises.",
+        "Seuls les fichiers JPG et PNG sont autorises.",
         "TYPE_NOT_ALLOWED",
         400,
       );

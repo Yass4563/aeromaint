@@ -1,5 +1,5 @@
 /* eslint-disable jsx-a11y/alt-text */
-import { existsSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import path from "path";
 
 import {
@@ -75,7 +75,12 @@ const styles = StyleSheet.create({
   },
 });
 
-function resolvePhotoSource(url: string): string | undefined {
+type EmbeddedPhotoSource = {
+  data: Buffer;
+  format: "jpg" | "png";
+};
+
+function resolvePhotoSource(url: string): EmbeddedPhotoSource | undefined {
   if (!url.startsWith("/uploads/")) {
     return undefined;
   }
@@ -89,7 +94,20 @@ function resolvePhotoSource(url: string): string | undefined {
     return undefined;
   }
 
-  return existsSync(absolutePath) ? absolutePath : undefined;
+  if (!existsSync(absolutePath)) {
+    return undefined;
+  }
+
+  const extension = path.extname(absolutePath).toLowerCase();
+
+  if (extension !== ".jpg" && extension !== ".png") {
+    return undefined;
+  }
+
+  return {
+    data: readFileSync(absolutePath),
+    format: extension === ".jpg" ? "jpg" : "png",
+  };
 }
 
 export async function generateRapportPDF(rapportId: string): Promise<Buffer> {
@@ -120,7 +138,7 @@ export async function generateRapportPDF(rapportId: string): Promise<Buffer> {
 
   const photoSources = rapport.photos
     .map((photo) => resolvePhotoSource(photo.url))
-    .filter((value): value is string => Boolean(value));
+    .filter((value): value is EmbeddedPhotoSource => Boolean(value));
 
   return renderToBuffer(
     <Document>
@@ -180,7 +198,7 @@ export async function generateRapportPDF(rapportId: string): Promise<Buffer> {
             <Text style={styles.sectionTitle}>Photos</Text>
             <View style={styles.photoGrid}>
               {photoSources.map((src, index) => (
-                <Image key={`${src}-${index}`} src={src} style={styles.photo} />
+                <Image key={index} src={src} style={styles.photo} />
               ))}
             </View>
           </View>

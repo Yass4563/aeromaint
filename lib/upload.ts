@@ -6,14 +6,13 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_TYPES = new Map([
   ["image/jpeg", "jpg"],
   ["image/png", "png"],
-  ["image/webp", "webp"],
 ]);
 
 export function isAllowedImageType(contentType: string): boolean {
   return ALLOWED_TYPES.has(contentType);
 }
 
-function detectImageExtension(buffer: Buffer): "jpg" | "png" | "webp" | undefined {
+function detectImageExtension(buffer: Buffer): "jpg" | "png" | undefined {
   if (
     buffer.length >= 3 &&
     buffer[0] === 0xff &&
@@ -35,14 +34,6 @@ function detectImageExtension(buffer: Buffer): "jpg" | "png" | "webp" | undefine
     buffer[7] === 0x0a
   ) {
     return "png";
-  }
-
-  if (
-    buffer.length >= 12 &&
-    buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
-    buffer.subarray(8, 12).toString("ascii") === "WEBP"
-  ) {
-    return "webp";
   }
 
   return undefined;
