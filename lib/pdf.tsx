@@ -85,7 +85,10 @@ function resolvePhotoSource(url: string): EmbeddedPhotoSource | undefined {
     return undefined;
   }
 
-  const uploadRoot = path.join(process.cwd(), "public", "uploads");
+  const uploadRoot = path.resolve(
+    process.cwd(),
+    process.env.UPLOAD_DIR || "public/uploads",
+  );
   const relativePath = url.slice("/uploads/".length);
   const absolutePath = path.normalize(path.join(uploadRoot, relativePath));
   const relativeToRoot = path.relative(uploadRoot, absolutePath);

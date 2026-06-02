@@ -2,7 +2,7 @@ import { EquipementStatut } from "@prisma/client";
 import { z } from "zod";
 
 const UploadedPhotoUrlSchema = z.string().regex(
-  /^\/uploads\/\d{4}\/\d{2}\/[0-9a-f-]{36}\.(jpg|png)$/i,
+  /^\/uploads\/(?:(?:\d{4}\/\d{2}\/[0-9a-f-]{36})|(?:presentation\/[a-z0-9-]+))\.(jpg|png)$/i,
   "L'URL de photo est invalide.",
 );
 

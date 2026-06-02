@@ -49,6 +49,7 @@ export function MaintenanceForm({
   const { showToast } = useToast();
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [description, setDescription] = useState("");
   const [dateIntervention, setDateIntervention] = useState(new Date().toISOString().slice(0, 16));
@@ -105,30 +106,55 @@ export function MaintenanceForm({
       return;
     }
 
-    const formData = new FormData();
-    Array.from(files).forEach((file) => formData.append("files", file));
-
-    const response = await fetch("/api/upload", {
-      method: "POST",
-      body: formData,
-    });
-
-    const json = await response.json();
-
-    if (!response.ok) {
-      showToast({ type: "error", title: "Echec du televersement des photos." });
+    if (photoUrls.length + files.length > 8) {
+      showToast({
+        type: "error",
+        title: "Vous pouvez joindre au maximum 8 photos.",
+      });
       return;
     }
 
-    if ("fichiers" in json) {
-      setPhotoUrls((current) => [...current, ...json.fichiers.map((item: { url: string }) => item.url)]);
-    } else {
-      setPhotoUrls((current) => [...current, json.url]);
+    const formData = new FormData();
+    Array.from(files).forEach((file) => formData.append("files", file));
+
+    setUploading(true);
+
+    try {
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const json = await response.json();
+
+      if (!response.ok) {
+        showToast({ type: "error", title: "Echec du televersement des photos." });
+        return;
+      }
+
+      if ("fichiers" in json) {
+        setPhotoUrls((current) => [...current, ...json.fichiers.map((item: { url: string }) => item.url)]);
+      } else {
+        setPhotoUrls((current) => [...current, json.url]);
+      }
+    } catch {
+      showToast({ type: "error", title: "Echec du televersement des photos." });
+    } finally {
+      setUploading(false);
     }
   }
 
   async function handleSubmit() {
     if (!taskId) return;
+
+    if (uploading) {
+      showToast({
+        type: "error",
+        title: "Attendez la fin du televersement des photos.",
+      });
+      return;
+    }
+
     setSaving(true);
     const response = await fetch("/api/reports", {
       method: "POST",
@@ -181,9 +207,13 @@ export function MaintenanceForm({
               Exporter en PDF
             </a>
           ) : null}
-          <Button onClick={handleSubmit} disabled={saving}>
+          <Button onClick={handleSubmit} disabled={saving || uploading}>
             <Save className="mr-2 h-4 w-4" />
-            {saving ? "Soumission..." : "Soumettre l intervention"}
+            {uploading
+              ? "Televersement des photos..."
+              : saving
+                ? "Soumission..."
+                : "Soumettre l intervention"}
           </Button>
         </div>
       }
@@ -240,8 +270,8 @@ export function MaintenanceForm({
           )}
           <div className="space-y-3">
             <label className="inline-flex items-center gap-3 rounded-xl border border-dashed border-border px-4 py-3">
-              <input type="file" accept="image/jpeg,image/png" multiple className="hidden" onChange={(event) => handleUpload(event.target.files)} />
-              Ajouter des photos
+              <input type="file" accept="image/jpeg,image/png" multiple className="hidden" disabled={uploading} onChange={(event) => handleUpload(event.target.files)} />
+              {uploading ? "Televersement en cours..." : "Ajouter des photos"}
             </label>
             {photoUrls.length > 0 ? (
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

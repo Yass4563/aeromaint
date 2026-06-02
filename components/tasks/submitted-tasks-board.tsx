@@ -164,19 +164,21 @@ export function SubmittedTasksBoard({ items }: { items: SubmittedTask[] }) {
               <p className="font-semibold">{item.equipement.nom}</p>
               <p className="text-sm text-muted">{item.equipement.famille.nom}</p>
             </td>
-            <td className="px-4 py-3 text-muted">{item.planning.type}</td>
+            <td className="max-w-36 px-3 py-3 text-muted">
+              {item.planning.type.replaceAll("_", " ")}
+            </td>
             <td className="px-4 py-3 text-muted">{formatDate(item.datePrevue)}</td>
             <td className="px-4 py-3 text-muted">{item.equipement.zone.nom}</td>
             <td className="px-4 py-3 text-muted">
               {item.technicien ? `${item.technicien.prenom} ${item.technicien.nom}` : "Non assigne"}
             </td>
-            <td className="min-w-64 px-4 py-3">
+            <td className="w-60 max-w-60 px-3 py-3">
               {item.rapport ? (
                 <div className="space-y-2">
-                  <p className="max-w-72 text-sm text-muted">{item.rapport.description}</p>
+                  <p className="line-clamp-4 text-sm text-muted">{item.rapport.description}</p>
                   {item.rapport.photos.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
-                      {item.rapport.photos.map((photo) => (
+                      {item.rapport.photos.slice(0, 3).map((photo) => (
                         <a key={photo.id} href={photo.url} target="_blank" rel="noreferrer">
                           <Image
                             src={photo.url}
@@ -188,6 +190,11 @@ export function SubmittedTasksBoard({ items }: { items: SubmittedTask[] }) {
                           />
                         </a>
                       ))}
+                      {item.rapport.photos.length > 3 ? (
+                        <span className="flex h-12 w-16 items-center justify-center rounded-lg bg-primary-soft text-xs font-semibold text-primary">
+                          +{item.rapport.photos.length - 3}
+                        </span>
+                      ) : null}
                     </div>
                   ) : (
                     <p className="text-xs text-muted">Aucune photo jointe.</p>
@@ -205,15 +212,16 @@ export function SubmittedTasksBoard({ items }: { items: SubmittedTask[] }) {
                 <p className="text-sm text-muted">Rapport indisponible.</p>
               )}
             </td>
-            <td className="px-4 py-3">
+            <td className="px-3 py-3">
               <Badge value="SOUMISE" />
             </td>
-            <td className="px-4 py-3">
-              <div className="flex gap-2">
-                <Button size="sm" onClick={() => action(item.id, "validate")} disabled={pendingId === item.id}>
+            <td className="w-24 px-3 py-3">
+              <div className="flex flex-col gap-2">
+                <Button className="w-full" size="sm" onClick={() => action(item.id, "validate")} disabled={pendingId === item.id}>
                   Valider
                 </Button>
                 <Button
+                  className="w-full"
                   size="sm"
                   variant="danger"
                   onClick={() => action(item.id, "reject")}
