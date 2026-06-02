@@ -19,4 +19,6 @@ export const CreateEquipementSchema = z.object({
   remarques: z.string().trim().optional().or(z.literal("")),
 });
 
-export const UpdateEquipementSchema = CreateEquipementSchema;
+export const UpdateEquipementSchema = CreateEquipementSchema.extend({
+  statut: z.nativeEnum(EquipementStatut).optional(),
+});

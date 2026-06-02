@@ -1,5 +1,3 @@
-import { Role } from "@prisma/client";
-
 import { EquipmentModal } from "@/components/equipment/equipment-modal";
 import { EquipmentTabs } from "@/components/equipment/equipment-tabs";
 import { QRCodeDisplay } from "@/components/equipment/qr-code-display";
@@ -55,7 +53,7 @@ export default async function EquipmentDetailPage({
             <Badge label={equipement.famille.nom} />
           </div>
         </div>
-        {session?.user.role === Role.ADMIN ? (
+        {session?.user?.role && hasPermission(session.user.role, "equipement:write") ? (
           <EquipmentModal
             triggerLabel="Modifier"
             familles={families}

@@ -5,6 +5,7 @@ import { Role } from "@prisma/client";
 import { EquipmentModal } from "@/components/equipment/equipment-modal";
 import { EquipmentTable } from "@/components/equipment/equipment-table";
 import { auth } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 function toPositiveNumber(value: string | string[] | undefined, fallback: number) {
@@ -112,6 +113,8 @@ export default async function EquipmentPage({
       ),
     ),
   );
+  const canEditEquipment =
+    session?.user?.role && hasPermission(session.user.role, "equipement:write");
 
   return (
     <div className="space-y-6">
@@ -279,7 +282,13 @@ export default async function EquipmentPage({
         </div>
       </div>
 
-      <EquipmentTable items={items} />
+      <EquipmentTable
+        items={items}
+        familles={families}
+        zones={zones}
+        services={services}
+        canEdit={Boolean(canEditEquipment)}
+      />
     </div>
   );
 }

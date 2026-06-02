@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import type { ButtonProps } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
@@ -29,6 +30,7 @@ interface EquipmentValue {
   familleId?: string;
   zoneId?: string;
   serviceId?: string;
+  statut?: string;
   miseEnService?: Date | null;
   remplacementPrevu?: Date | null;
   dateArret?: Date | null;
@@ -46,12 +48,16 @@ export function EquipmentModal({
   zones,
   services,
   value,
+  triggerVariant = "primary",
+  triggerSize = "md",
 }: {
   triggerLabel: string;
   familles: Option[];
   zones: Option[];
   services: Option[];
   value?: EquipmentValue;
+  triggerVariant?: ButtonProps["variant"];
+  triggerSize?: ButtonProps["size"];
 }) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -74,6 +80,7 @@ export function EquipmentModal({
     familleId: value?.familleId || familles[0]?.id || "",
     zoneId: value?.zoneId || zones[0]?.id || "",
     serviceId: value?.serviceId || services[0]?.id || "",
+    statut: value?.statut || "EN_SERVICE",
     miseEnService: toDateInput(value?.miseEnService),
     remplacementPrevu: toDateInput(value?.remplacementPrevu),
     dateArret: toDateInput(value?.dateArret),
@@ -208,7 +215,9 @@ export function EquipmentModal({
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>{triggerLabel}</Button>
+      <Button variant={triggerVariant} size={triggerSize} onClick={() => setOpen(true)}>
+        {triggerLabel}
+      </Button>
       <Modal
         open={open}
         onClose={() => setOpen(false)}
@@ -286,6 +295,13 @@ export function EquipmentModal({
           </div>
           <Input label="Mise en service" type="date" value={form.miseEnService} onChange={(e) => setForm({ ...form, miseEnService: e.target.value })} />
           <Input label="Date proposee de remplacement" type="date" value={form.remplacementPrevu} onChange={(e) => setForm({ ...form, remplacementPrevu: e.target.value })} />
+          {value?.id ? (
+            <Select label="Statut" value={form.statut} onChange={(e) => setForm({ ...form, statut: e.target.value })}>
+              <option value="EN_SERVICE">En service</option>
+              <option value="EN_PANNE">En panne</option>
+              <option value="HORS_SERVICE">Hors service</option>
+            </Select>
+          ) : null}
           <Input label="Date d'arret" type="date" value={form.dateArret} onChange={(e) => setForm({ ...form, dateArret: e.target.value })} />
           <label className="flex items-center gap-3 pt-8">
             <input type="checkbox" checked={form.modeIntegre} onChange={(e) => setForm({ ...form, modeIntegre: e.target.checked })} />

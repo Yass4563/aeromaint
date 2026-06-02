@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
+import { Select } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { getApiErrorMessage } from "@/lib/client-api";
@@ -19,6 +20,7 @@ interface TaskDetail {
   datePrevue: string;
   equipement: {
     nom: string;
+    statut: string;
     famille: { nom: string };
     zone: { nom: string };
     service: { nom: string };
@@ -50,6 +52,7 @@ export function MaintenanceForm({
   const [saving, setSaving] = useState(false);
   const [description, setDescription] = useState("");
   const [dateIntervention, setDateIntervention] = useState(new Date().toISOString().slice(0, 16));
+  const [equipementStatut, setEquipementStatut] = useState("EN_SERVICE");
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
 
   useEffect(() => {
@@ -78,6 +81,7 @@ export function MaintenanceForm({
             ? new Date(json.rapport.dateIntervention).toISOString().slice(0, 16)
             : new Date().toISOString().slice(0, 16),
         );
+        setEquipementStatut(json.equipement.statut === "EN_PANNE" ? "EN_PANNE" : "EN_SERVICE");
         setPhotoUrls(json.rapport?.photos?.map((photo) => photo.url) || []);
       })
       .catch((error) => {
@@ -133,6 +137,7 @@ export function MaintenanceForm({
         taskId,
         description,
         dateIntervention,
+        equipementStatut,
         photoUrls,
       }),
     });
@@ -219,6 +224,20 @@ export function MaintenanceForm({
             onChange={(event) => setDescription(event.target.value)}
             placeholder="Decrivez l'intervention realisee..."
           />
+          {task.equipement.statut === "HORS_SERVICE" ? (
+            <div className="rounded-2xl border border-border bg-slate-50 px-4 py-3 text-sm text-muted">
+              Cet equipement est hors service. Son statut administratif restera inchange.
+            </div>
+          ) : (
+            <Select
+              label="Etat de l'equipement apres l'intervention"
+              value={equipementStatut}
+              onChange={(event) => setEquipementStatut(event.target.value)}
+            >
+              <option value="EN_SERVICE">En service - l&apos;equipement est operationnel</option>
+              <option value="EN_PANNE">En panne - l&apos;equipement est inoperable</option>
+            </Select>
+          )}
           <div className="space-y-3">
             <label className="inline-flex items-center gap-3 rounded-xl border border-dashed border-border px-4 py-3">
               <input type="file" accept="image/*" multiple className="hidden" onChange={(event) => handleUpload(event.target.files)} />

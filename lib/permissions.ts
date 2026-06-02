@@ -45,6 +45,7 @@ export const PERMISSIONS: Record<Role, Permission[]> = {
   ADMIN: ALL_PERMISSIONS,
   SUPERVISEUR: [
     "equipement:read",
+    "equipement:write",
     "planning:read",
     "planning:write",
     "task:read",

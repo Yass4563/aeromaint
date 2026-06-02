@@ -1,4 +1,4 @@
-import { Role, TaskStatut } from "@prisma/client";
+import { EquipementStatut, Role, TaskStatut } from "@prisma/client";
 
 import { apiError, apiOk, parseJsonBody, requireSession } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
@@ -23,7 +23,10 @@ export async function POST(request: Request) {
 
   const task = await prisma.task.findUnique({
     where: { id: bodyResult.data.taskId },
-    include: { rapport: true },
+    include: {
+      equipement: true,
+      rapport: true,
+    },
   });
 
   if (!task) {
@@ -78,6 +81,19 @@ export async function POST(request: Request) {
         soumisLe: new Date(),
       },
     });
+
+    if (task.equipement.statut !== EquipementStatut.HORS_SERVICE) {
+      await tx.equipement.update({
+        where: { id: task.equipementId },
+        data: {
+          statut: bodyResult.data.equipementStatut,
+          dateArret:
+            bodyResult.data.equipementStatut === EquipementStatut.EN_SERVICE
+              ? null
+              : task.equipement.dateArret || bodyResult.data.dateIntervention,
+        },
+      });
+    }
 
     return tx.rapportMaintenance.findUnique({
       where: { id: saved.id },

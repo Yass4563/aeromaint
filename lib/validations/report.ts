@@ -1,3 +1,4 @@
+import { EquipementStatut } from "@prisma/client";
 import { z } from "zod";
 
 const UploadedPhotoUrlSchema = z.string().regex(
@@ -9,5 +10,9 @@ export const ReportSchema = z.object({
   taskId: z.string().uuid(),
   description: z.string().trim().min(1, "La description est obligatoire."),
   dateIntervention: z.coerce.date(),
+  equipementStatut: z.enum([
+    EquipementStatut.EN_SERVICE,
+    EquipementStatut.EN_PANNE,
+  ]),
   photoUrls: z.array(UploadedPhotoUrlSchema).max(8).default([]),
 });

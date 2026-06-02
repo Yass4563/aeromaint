@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { EquipmentModal } from "@/components/equipment/equipment-modal";
 import { Badge } from "@/components/ui/badge";
 import { Table } from "@/components/ui/table";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -9,10 +10,15 @@ interface EquipmentRow {
   nom: string;
   code: string | null;
   marque: string | null;
-  prixAcquisition: unknown;
+  numeroSerie: string | null;
+  familleId: string;
+  zoneId: string;
+  serviceId: string;
+  prixAcquisition: string | number | { toString(): string } | null;
   modeIntegre: boolean;
   miseEnService: Date | null;
   remplacementPrevu: Date | null;
+  dateArret: Date | null;
   remarques: string | null;
   statut: string;
   famille: { nom: string };
@@ -20,7 +26,24 @@ interface EquipmentRow {
   service: { nom: string };
 }
 
-export function EquipmentTable({ items }: { items: EquipmentRow[] }) {
+interface Option {
+  id: string;
+  nom: string;
+}
+
+export function EquipmentTable({
+  items,
+  familles,
+  zones,
+  services,
+  canEdit,
+}: {
+  items: EquipmentRow[];
+  familles: Option[];
+  zones: Option[];
+  services: Option[];
+  canEdit: boolean;
+}) {
   return (
     <Table
       headers={[
@@ -50,6 +73,33 @@ export function EquipmentTable({ items }: { items: EquipmentRow[] }) {
                 <Badge value={item.statut} />
                 <Badge label={item.famille.nom} className="bg-slate-100 text-slate-700" />
               </div>
+              {canEdit ? (
+                <EquipmentModal
+                  triggerLabel="Modifier"
+                  triggerVariant="secondary"
+                  triggerSize="sm"
+                  familles={familles}
+                  zones={zones}
+                  services={services}
+                  value={{
+                    id: item.id,
+                    nom: item.nom,
+                    code: item.code,
+                    marque: item.marque,
+                    numeroSerie: item.numeroSerie,
+                    prixAcquisition: item.prixAcquisition?.toString() || null,
+                    modeIntegre: item.modeIntegre,
+                    familleId: item.familleId,
+                    zoneId: item.zoneId,
+                    serviceId: item.serviceId,
+                    statut: item.statut,
+                    miseEnService: item.miseEnService,
+                    remplacementPrevu: item.remplacementPrevu,
+                    dateArret: item.dateArret,
+                    remarques: item.remarques,
+                  }}
+                />
+              ) : null}
             </div>
           </td>
           <td className="px-4 py-3 text-muted">

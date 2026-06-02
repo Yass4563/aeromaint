@@ -81,6 +81,12 @@ export async function PUT(
     return apiError("Equipement introuvable.", "EQUIPMENT_NOT_FOUND", 404);
   }
 
+  const statut = bodyResult.data.statut ?? existing.statut;
+  const dateArret =
+    statut === EquipementStatut.EN_SERVICE
+      ? null
+      : bodyResult.data.dateArret ?? existing.dateArret ?? new Date();
+
   const equipement = await prisma.equipement.update({
     where: { id },
     data: {
@@ -91,11 +97,11 @@ export async function PUT(
       familleId: bodyResult.data.familleId,
       zoneId: bodyResult.data.zoneId,
       serviceId: bodyResult.data.serviceId,
-      statut: bodyResult.data.statut,
+      statut,
       qrAppose: bodyResult.data.qrAppose,
       miseEnService: bodyResult.data.miseEnService,
       remplacementPrevu: bodyResult.data.remplacementPrevu,
-      dateArret: bodyResult.data.dateArret,
+      dateArret,
       prixAcquisition: bodyResult.data.prixAcquisition,
       modeIntegre: bodyResult.data.modeIntegre,
       remarques: optionalText(bodyResult.data.remarques),
